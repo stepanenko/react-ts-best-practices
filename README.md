@@ -158,10 +158,10 @@
   - [Using Partial Types](#using-partial-types)
   - [The Types I need weren't exported!](#the-types-i-need-werent-exported)
   - [The Types I need don't exist!](#the-types-i-need-dont-exist)
-    - [Slapping `any` on everything](#slapping-any-on-everything)
-    - [Autogenerate types](#autogenerate-types)
-    - [Typing Exported Hooks](#typing-exported-hooks)
-    - [Typing Exported Components](#typing-exported-components)<!--END-SECTION:types-toc-->
+    * [Slapping `any` on everything](#slapping-any-on-everything)
+    * [Autogenerate types](#autogenerate-types)
+    * [Typing Exported Hooks](#typing-exported-hooks)
+    * [Typing Exported Components](#typing-exported-components)<!--END-SECTION:types-toc-->
 - [Troubleshooting Handbook: Operators](#troubleshooting-handbook-operators)
 - [Troubleshooting Handbook: Utilties](#troubleshooting-handbook-utilities)
 - [Troubleshooting Handbook: tsconfig.json](#troubleshooting-handbook-tsconfigjson)
@@ -177,7 +177,6 @@
   </details>
 
 <!--START-SECTION:setup-->
-
 # Section 1: Setup TypeScript with React
 
 ## Prerequisites
@@ -255,14 +254,24 @@ You should also check [the new TypeScript docs for official descriptions between
 # Section 2: Getting Started
 
 <!--START-SECTION:function-components-->
-
 ## Function Components
 
 These can be written as normal functions that take a `props` argument and return a JSX element.
 
 ```tsx
-type AppProps = { message: string }; /* could also use interface */
+// Declaring type of props - see "Typing Component Props" for more examples
+type AppProps = {
+  message: string;
+}; /* use `interface` if exporting so that consumers can extend */
+
+// Easiest way to declare a Function Component; return type is inferred.
 const App = ({ message }: AppProps) => <div>{message}</div>;
+
+// you can choose annotate the return type so an error is raised if you accidentally return some other type
+const App = ({ message }: AppProps): JSX.Element => <div>{message}</div>;
+
+// you can also inline the type declaration; eliminates naming the prop types, but looks repetitive
+const App = ({ message }: { message: string }) => <div>{message}</div>;
 ```
 
 <details>
@@ -297,11 +306,7 @@ const Title: React.FunctionComponent<{ title: string }> = ({
 ```
 
 <details>
-<summary>
-
-Using `React.VoidFunctionComponent` or `React.VFC` instead
-
-</summary>
+<summary>Using `React.VoidFunctionComponent` or `React.VFC` instead</summary>
 
 As of [@types/react 16.9.48](https://github.com/DefinitelyTyped/DefinitelyTyped/pull/46643), you can also use `React.VoidFunctionComponent` or `React.VFC` type if you want to type `children` explicitly. This is an interim solution until `FunctionComponent` will accept no children by default (planned for `@types/react@^18.0.0`).
 
@@ -377,14 +382,13 @@ const MyArrayComponent = () => (Array(5).fill(<div />) as any) as JSX.Element;
 <!--END-SECTION:function-components-->
 
 <!--START-SECTION:hooks-->
-
 ## Hooks
 
 Hooks are [supported in `@types/react` from v16.8 up](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/a05cc538a42243c632f054e42eab483ebf1560ab/types/react/index.d.ts#L800-L1031).
 
 ## useState
 
-Type inference works very well most of the time:
+Type inference works very well for simple values:
 
 ```tsx
 const [val, toggle] = React.useState(false);
@@ -402,6 +406,17 @@ const [user, setUser] = React.useState<IUser | null>(null);
 // later...
 setUser(newUser);
 ```
+
+You can also use type assertions if a state is initialized soon after setup and always has a value after:
+
+```tsx
+const [user, setUser] = React.useState<IUser>({} as IUser);
+
+// later...
+setUser(newUser);
+```
+
+This temporarily "lies" to the TypeScript compiler that `{}` is of type `IUser`. You should follow up by setting the `user` state — if you don't, the rest of your code may rely on the fact that `user` is of type `IUser` and that may lead to runtime errors.
 
 ## useReducer
 
@@ -533,7 +548,7 @@ function MyComponent() {
 
 </details>
 
-The second option will infer a `RefObject` instead of a `MutableRefObject`. This means there will be a type error ifyou try to assign to `ref2.current`.
+The second option will infer a `RefObject` instead of a `MutableRefObject`. This means there will be a type error if you try to assign to `ref2.current`.
 
 The third option will make `ref3.current` mutable, and is intended for "instance variables" that you manage yourself.
 
@@ -661,7 +676,6 @@ If you are writing a React Hooks library, don't forget that you should also expo
 <!--END-SECTION:hooks-->
 
 <!--START-SECTION:class-components-->
-
 ## Class Components
 
 Within TypeScript, `React.Component` is a generic type (aka `React.Component<PropType, StateType>`), so you want to provide it with (optional) prop and state type parameters:
@@ -836,7 +850,6 @@ class Comp extends React.PureComponent<Props, State> {
 <!--END-SECTION:class-components-->
 
 <!--START-SECTION:default-props-->
-
 ## You May Not Need `defaultProps`
 
 As per [this tweet](https://twitter.com/dan_abramov/status/1133878326358171650), defaultProps will eventually be deprecated. You can check the discussions here:
@@ -936,7 +949,7 @@ export type ApparentGreetProps = JSX.LibraryManagedAttributes<
 >;
 ```
 
-``This will work properly, although hovering over`ApparentGreetProps`may be a little intimidating. You can reduce this boilerplate with the`ComponentProps` utility detailed below.
+This will work properly, although hovering over`ApparentGreetProps`may be a little intimidating. You can reduce this boilerplate with the`ComponentProps` utility detailed below.
 
 </details>
 
@@ -1047,7 +1060,6 @@ The problem with this approach is it causes complex issues with the type inferen
 <!--END-SECTION:default-props-->
 
 <!--START-SECTION:basic-type-examples-->
-
 ## Typing Component Props
 
 This is intended as a basic orientation and reference for React developers familiarizing with TypeScript.
@@ -1279,7 +1291,6 @@ class Comp extends React.PureComponent<Props, State> {
 <!--END-SECTION:get-derived-state-from-props-->
 
 <!--START-SECTION:forms-and-events-->
-
 ## Forms and Events
 
 If performance is not an issue (and it usually isn't!), inlining handlers is easiest as you can just use [type inference and contextual typing](https://www.typescriptlang.org/docs/handbook/type-inference.html#contextual-typing):
@@ -1340,7 +1351,7 @@ The first method uses an inferred method signature `(e: React.FormEvent<HTMLInpu
 
 **Typing onSubmit, with Uncontrolled components in a Form**
 
-If you don't quite care about the type of the event, you can just use React.SyntheticEvent. If your target form has custom named inputs that you'd like to access, you can use type widening:
+If you don't quite care about the type of the event, you can just use React.SyntheticEvent. If your target form has custom named inputs that you'd like to access, you can use a type assertion:
 
 ```tsx
 <form
@@ -1378,10 +1389,47 @@ If you don't quite care about the type of the event, you can just use React.Synt
 
 Of course, if you're making any sort of significant form, [you should use Formik](https://jaredpalmer.com/formik) or [React Hook Form](https://react-hook-form.com/), which are written in TypeScript.
 
+### List of event types
+
+| Event Type       | Description                                                                                                                                                                                                                                                            |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AnimationEvent   | CSS Animations.                                                                                                                                                                                                                                                        |
+| ChangeEvent      | Changing the value of `<input>`, `<select>` and `<textarea>` element.                                                                                                                                                                                                  |
+| ClipboardEvent   | Using copy, paste and cut events.                                                                                                                                                                                                                                      |
+| CompositionEvent | Events that occur due to the user indirectly entering text (e.g. depending on Browser and PC setup, a popup window may appear with additional characters if you e.g. want to type Japanese on a US Keyboard)                                                           |
+| DragEvent        | Drag and drop interaction with a pointer device (e.g. mouse).                                                                                                                                                                                                          |
+| FocusEvent       | Event that occurs when elements gets or loses focus.                                                                                                                                                                                                                   |
+| FormEvent        | Event that occurs whenever a form or form element gets/loses focus, a form element value is changed or the form is submitted.                                                                                                                                          |
+| InvalidEvent     | Fired when validity restrictions of an input fails (e.g `<input type="number" max="10">` and someone would insert number 20).                                                                                                                                          |
+| KeyboardEvent    | User interaction with the keyboard. Each event describes a single key interaction.                                                                                                                                                                                     |
+| MouseEvent       | Events that occur due to the user interacting with a pointing device (e.g. mouse)                                                                                                                                                                                      |
+| PointerEvent     | Events that occur due to user interaction with a variety pointing of devices such as mouse, pen/stylus, a touchscreen and which also supports multi-touch. Unless you develop for older browsers (IE10 or Safari 12), pointer events are recommended. Extends UIEvent. |
+| TouchEvent       | Events that occur due to the user interacting with a touch device. Extends UIEvent.                                                                                                                                                                                    |
+| TransitionEvent  | CSS Transition. Not fully browser supported. Extends UIEvent                                                                                                                                                                                                           |
+| UIEvent          | Base Event for Mouse, Touch and Pointer events.                                                                                                                                                                                                                        |
+| WheelEvent       | Scrolling on a mouse wheel or similar input device. (Note: `wheel` event should not be confused with the `scroll` event)                                                                                                                                               |
+| SyntheticEvent   | The base event for all above events. Should be used when unsure about event type                                                                                                                                                                                       |
+
+<details>
+<summary>
+
+**What about `InputEvent`?**
+
+</summary>
+
+You've probably noticed that there is no `InputEvent`. This is because it is not supported by Typescript as the event itself has no fully browser support and may behave differently in different browsers. You can use `KeyboardEvent` instead.
+
+Sources:
+
+- https://github.com/microsoft/TypeScript/issues/29441
+- https://developer.mozilla.org/en-US/docs/Web/API/InputEvent
+- https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/input_event
+
+</details>
+
 <!--END-SECTION:forms-and-events-->
 
 <!--START-SECTION:context-->
-
 ## Context
 
 ## Basic Example
@@ -1664,7 +1712,6 @@ const Consumer = Context.Consumer;
 <!--END-SECTION:context-->
 
 <!--START-SECTION:forward-create-ref-->
-
 ## forwardRef/createRef
 
 Check the [Hooks section](https://github.com/typescript-cheatsheets/react-typescript-cheatsheet/blob/master/README.md#hooks) for `useRef`.
@@ -1727,7 +1774,6 @@ You may also wish to do [Conditional Rendering with `forwardRef`](https://github
 <!--END-SECTION:forward-create-ref-->
 
 <!--START-SECTION:portals-->
-
 ## Portals
 
 Using `ReactDOM.createPortal`:
@@ -1837,7 +1883,6 @@ This example is based on the [Event Bubbling Through Portal](https://reactjs.org
 <!--END-SECTION:portals-->
 
 <!--START-SECTION:error-boundaries-->
-
 ## Error Boundaries
 
 ### Option 1: Using react-error-boundary
@@ -1892,7 +1937,6 @@ export default ErrorBoundary;
 <!--END-SECTION:error-boundaries-->
 
 <!--START-SECTION:concurrent-->
-
 ## Concurrent React/React Suspense
 
 _Not written yet._ watch <https://github.com/sw-yx/fresh-async-react> for more on React Suspense and Time Slicing.
@@ -1902,7 +1946,6 @@ _Not written yet._ watch <https://github.com/sw-yx/fresh-async-react> for more o
 <!--END-SECTION:concurrent-->
 
 <!--START-SECTION:types-->
-
 # Troubleshooting Handbook: Types
 
 > ⚠️ Have you read [the TypeScript FAQ](https://github.com/microsoft/TypeScript/wiki/FAQ?) Your answer might be there!
@@ -2038,9 +2081,9 @@ Note that you cannot assert your way to anything - basically it is only for refi
 You can also assert a property is non-null, when accessing it:
 
 ```ts
-element.parentNode!.removeChild(element) // ! before the period
-myFunction(document.getElementById(dialog.id!)! // ! after the property accessing
-let userID!: string // definite assignment assertion... be careful!
+element.parentNode!.removeChild(element); // ! before the period
+myFunction(document.getElementById(dialog.id!)!); // ! after the property accessing
+let userID!: string; // definite assignment assertion... be careful!
 ```
 
 Of course, try to actually handle the null case instead of asserting :)
@@ -2082,13 +2125,18 @@ In future you can use the `unique` keyword to brand. [See this PR](https://githu
 Adding two types together can be handy, for example when your component is supposed to mirror the props of a native component like a `button`:
 
 ```tsx
-export interface Props {
+export interface PrimaryButtonProps {
   label: string;
 }
 export const PrimaryButton = (
-  props: Props & React.HTMLProps<HTMLButtonElement> // adding my Props together with the @types/react button provided props
-) => <Button {...props} />;
+  props: PrimaryButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>
+) => {
+  // do custom buttony stuff
+  return <button {...props}> {props.label} </button>;
+};
 ```
+
+_Playground [here](https://www.typescriptlang.org/play?ssl=4&ssc=1&pln=12&pc=2#code/JYWwDg9gTgLgBAJQKYEMDG8BmUIjgcilQ3wFgAoCipAD0ljmADsYkpN0k4AFKUFKAE8AQgFcYMCE14QwAZzgBvCnDgAbFACMkagFxw5MPkwDmAbgoBfanWjw0Uwzz4gBI8ZKZwAvHAAUKnBgOPL6vPxCYhJSMvJwAGSIxDAAdFGeABIAKgCyADIAghJ8muJIcgA82fnpUgCiakggSCwAfBQAlD6tSoEA9H1wACYQcGiihrhwpdFMggYwopiYgUSLUF4VM55KKXvBsnKWPYoH8ika2mqWcBV921KtFuSWQA)_
 
 You can also use Intersection Types to make reusable subsets of props for similar components:
 
@@ -2443,7 +2491,6 @@ For more information on creating type definitions for class components, you can 
 <!--END-SECTION:types-->
 
 <!--START-SECTION:operators-->
-
 # Troubleshooting Handbook: Operators
 
 - `typeof` and `instanceof`: type query used for refinement
@@ -2467,7 +2514,6 @@ Conditional Types are a difficult topic to get around so here are some extra res
 <!--END-SECTION:operators-->
 
 <!--START-SECTION:utilities-->
-
 # Troubleshooting Handbook: Utilities
 
 These are all built in, [see source in es5.d.ts](https://github.com/microsoft/TypeScript/blob/2c458c0d1ccb96442bca9ce43aa987fb0becf8a9/src/lib/es5.d.ts#L1401-L1474):
@@ -2489,7 +2535,6 @@ These are all built in, [see source in es5.d.ts](https://github.com/microsoft/Ty
 <!--END-SECTION:utilities-->
 
 <!--START-SECTION:ts-config-->
-
 # Troubleshooting Handbook: tsconfig.json
 
 You can find [all the Compiler options in the TypeScript docs](https://www.typescriptlang.org/docs/handbook/compiler-options.html). [The new TS docs also has per-flag annotations of what each does](https://www.typescriptlang.org/tsconfig#allowSyntheticDefaultImports). This is the setup I roll with for APPS (not libraries - for libraries you may wish to see the settings we use in `tsdx`):
@@ -2541,7 +2586,6 @@ Compilation speed grows linearly with size of codebase. For large projects, you 
 <!--END-SECTION:ts-config-->
 
 <!--START-SECTION:official-typings-bugs-->
-
 # Troubleshooting Handbook: Fixing bugs in official typings
 
 If you run into bugs with your library's official typings, you can copy them locally and tell TypeScript to use your local version using the "paths" field. In your `tsconfig.json`:
@@ -2608,7 +2652,6 @@ You can see examples of these included in the built in type declarations in the 
 <!--END-SECTION:official-typings-bugs-->
 
 <!--START-SECTION:non-ts-files-->
-
 # Time to Really Learn TypeScript
 
 Believe it or not, we have only barely introduced TypeScript here in this cheatsheet. If you are still facing TypeScript troubleshooting issues, it is likely that your understanding of TS is still too superficial.
@@ -2621,6 +2664,7 @@ It is worth mentioning some resources to help you get started:
 - Anders Hejlsberg's overview of TS: https://www.youtube.com/watch?v=ET4kT88JRXs
 - Marius Schultz: https://blog.mariusschulz.com/series/typescript-evolution with an [Egghead.io course](https://egghead.io/courses/advanced-static-types-in-typescript)
 - Basarat's Deep Dive: https://basarat.gitbook.io/typescript/
+- Axel Rauschmeyer's [Tackling TypeScript](https://exploringjs.com/tackling-ts/)
 - Rares Matei: [Egghead.io course](https://egghead.io/courses/practical-advanced-typescript)'s advanced TypeScript course on Egghead.io is great for newer typescript features and practical type logic applications (e.g. recursively making all properties of a type `readonly`)
 - Learn about [Generics, Conditional types and Mapped types](https://www.youtube.com/watch?v=PJjeHzvi_VQ&feature=youtu.be)
 - Shu Uesugi: [TypeScript for Beginner Programmers](https://ts.chibicode.com/)
@@ -2629,7 +2673,6 @@ It is worth mentioning some resources to help you get started:
 <!--END-SECTION:non-ts-files-->
 
 <!--START-SECTION:resources-->
-
 # Other React + TypeScript resources
 
 - me! <https://twitter.com/swyx>
@@ -2663,7 +2706,6 @@ It is worth mentioning some resources to help you get started:
 <!--END-SECTION:resources-->
 
 <!--START-SECTION:editor-integration-->
-
 # Editor Tooling and Integration
 
 - VSCode
@@ -2688,7 +2730,6 @@ You may also wish to use alternative logos - [jsx-tsx-logos](https://github.com/
 <!--END-SECTION:editor-integration-->
 
 <!--START-SECTION:linting-->
-
 # Linting
 
 > ⚠️Note that [TSLint is now in maintenance and you should try to use ESLint instead](https://medium.com/palantir/tslint-in-2019-1a144c2317a9). If you are interested in TSLint tips, please check this PR from [@azdanov](https://github.com/typescript-cheatsheets/react-typescript-cheatsheet/pull/14). The rest of this section just focuses on ESLint. [You can convert TSlint to ESlint with this tool](https://github.com/typescript-eslint/tslint-to-eslint-config).
@@ -2819,7 +2860,6 @@ If you're looking for information on Prettier, check out the [Prettier](https://
 <!--END-SECTION:other-resources-->
 
 <!--START-SECTION:talks-->
-
 # Recommended React + TypeScript talks
 
 - [Ultimate React Component Patterns with TypeScript](https://www.youtube.com/watch?v=_PBQ3if6Fmg), by Martin Hochel, GeeCon Prague 2018
@@ -2828,7 +2868,6 @@ If you're looking for information on Prettier, check out the [Prettier](https://
 <!--END-SECTION:talks-->
 
 <!--START-SECTION:learn-ts-->
-
 # Time to Really Learn TypeScript
 
 Believe it or not, we have only barely introduced TypeScript here in this cheatsheet. If you are still facing TypeScript troubleshooting issues, it is likely that your understanding of TS is still too superficial.
@@ -2841,6 +2880,7 @@ It is worth mentioning some resources to help you get started:
 - Anders Hejlsberg's overview of TS: https://www.youtube.com/watch?v=ET4kT88JRXs
 - Marius Schultz: https://blog.mariusschulz.com/series/typescript-evolution with an [Egghead.io course](https://egghead.io/courses/advanced-static-types-in-typescript)
 - Basarat's Deep Dive: https://basarat.gitbook.io/typescript/
+- Axel Rauschmeyer's [Tackling TypeScript](https://exploringjs.com/tackling-ts/)
 - Rares Matei: [Egghead.io course](https://egghead.io/courses/practical-advanced-typescript)'s advanced TypeScript course on Egghead.io is great for newer typescript features and practical type logic applications (e.g. recursively making all properties of a type `readonly`)
 - Learn about [Generics, Conditional types and Mapped types](https://www.youtube.com/watch?v=PJjeHzvi_VQ&feature=youtu.be)
 - Shu Uesugi: [TypeScript for Beginner Programmers](https://ts.chibicode.com/)
@@ -2849,7 +2889,6 @@ It is worth mentioning some resources to help you get started:
 <!--END-SECTION:learn-ts-->
 
 <!--START-SECTION:examples-->
-
 # Example App
 
 - [Create React App TypeScript Todo Example 2020](https://github.com/laststance/create-react-app-typescript-todo-example-2020)
